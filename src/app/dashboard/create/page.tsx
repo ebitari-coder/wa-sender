@@ -2,6 +2,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { listTemplates } from "@/lib/campaigns";
 import CampaignForm from "@/components/dashboard/CampaignForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function CreatePage() {
   const user = await getCurrentUser();
   const templates = listTemplates(user!.id);

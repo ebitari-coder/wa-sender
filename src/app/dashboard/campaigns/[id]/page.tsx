@@ -4,6 +4,8 @@ import { getCampaign, getAttachments, getRecipients } from "@/lib/campaigns";
 import { countRecipients } from "@/lib/campaigns";
 import CampaignDetail from "@/components/dashboard/CampaignDetail";
 
+export const dynamic = "force-dynamic";
+
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   const { id } = await params;

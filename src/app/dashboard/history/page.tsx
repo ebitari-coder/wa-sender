@@ -4,6 +4,8 @@ import { listCampaigns } from "@/lib/campaigns";
 import CampaignCard from "@/components/dashboard/CampaignCard";
 import Icon from "@/components/ui/Icon";
 
+export const dynamic = "force-dynamic";
+
 export default async function HistoryPage() {
   const user = await getCurrentUser();
   const campaigns = listCampaigns(user!.id, 200);

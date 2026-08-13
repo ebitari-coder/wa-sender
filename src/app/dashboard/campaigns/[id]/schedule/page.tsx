@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCampaign } from "@/lib/campaigns";
 import ReschedulePage from "@/components/dashboard/ReschedulePage";
 
+export const dynamic = "force-dynamic";
+
 export default async function RescheduleRoute({ params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   const { id } = await params;

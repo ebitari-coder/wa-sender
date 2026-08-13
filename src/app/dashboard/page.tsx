@@ -10,6 +10,8 @@ import WaStatusChip from "@/components/dashboard/WaStatusChip";
 import { timeAgo } from "@/lib/format";
 import { baileysManager } from "@/lib/sender/baileys";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   const campaigns = listCampaigns(user!.id, 10);
