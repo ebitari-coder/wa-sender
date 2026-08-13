@@ -1,16 +1,18 @@
 import "server-only";
-import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 
 const dataDir = process.env.DATA_DIR ?? path.join(process.cwd(), "data");
 const dbPath = process.env.DATABASE_PATH ?? path.join(dataDir, "app.db");
 
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-
-const globalForDb = globalThis as unknown as { __waDb?: Database.Database };
+const globalForDb = globalThis as unknown as { __waDb?: import("better-sqlite3").Database };
 
 function createDb() {
+  // Lazy-require better-sqlite3 so the native addon is never loaded during
+  // the Next.js build / page-data-collection phase (avoids SIGSEGV in workers).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Database = require("better-sqlite3") as typeof import("better-sqlite3");
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
@@ -19,7 +21,21 @@ function createDb() {
   return db;
 }
 
-function migrate(db: Database.Database) {
+export function getDb() {
+  if (!globalForDb.__waDb) {
+    globalForDb.__waDb = createDb();
+  }
+  return globalForDb.__waDb;
+}
+
+/** @deprecated Use getDb() instead */
+export const db = new Proxy({} as import("better-sqlite3").Database, {
+  get(_target, prop, receiver) {
+    return Reflect.get(getDb(), prop, receiver);
+  },
+});
+
+function migrate(db: import("better-sqlite3").Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id         TEXT PRIMARY KEY,
@@ -112,7 +128,7 @@ function migrate(db: Database.Database) {
 }
 
 /** In-place migrations for pre-existing databases. */
-function migrateAddColumns(db: Database.Database) {
+function migrateAddColumns(db: import("better-sqlite3").Database) {
   const campaignCols = (db.pragma("table_info(campaigns)") as { name: string }[]).map(
     (c) => c.name,
   );
@@ -129,4 +145,4 @@ function migrateAddColumns(db: Database.Database) {
   }
 }
 
-export const db = globalForDb.__waDb ?? (globalForDb.__waDb = createDb());
+
