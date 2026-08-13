@@ -145,6 +145,38 @@ SQLite at `data/app.db` with 7 tables:
 | `npm start` | Start production server |
 | `npm run lint` | Run ESLint |
 
+## Docker
+
+Build and run locally:
+
+```bash
+docker build -t wa-sender .
+docker run -p 3000:3000 \
+  -e DATABASE_PATH=/data/app.db \
+  -e WA_SESSION_DIR=/data/wa-session \
+  -v wa-sender-data:/data \
+  wa-sender
+```
+
+### Cloud66 Deployment
+
+1. Push to your Git remote
+2. In Cloud66, create a new service from your repo
+3. Set the **Dockerfile path** to `Dockerfile`
+4. Add a **persistent disk** mounted at `/data`
+5. Set environment variables in the Cloud66 dashboard:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_PATH` | `/data/app.db` |
+| `DATA_DIR` | `/data` |
+| `WA_SESSION_DIR` | `/data/wa-session` |
+| `UPLOAD_DIR` | `/data/uploads` |
+| `SMTP_HOST` | Your SMTP host |
+| `SMTP_USER` | Your SMTP user |
+| `SMTP_PASS` | Your SMTP password |
+| `REPORT_EMAILS` | Comma-separated report recipients |
+
 ## License
 
 Private — Power City Oke Ira Campus.
