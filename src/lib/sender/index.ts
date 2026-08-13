@@ -3,10 +3,20 @@ import { db } from "@/lib/db";
 import { newId, nowIso } from "@/lib/ids";
 import { publish, type ProgressSnapshot } from "@/lib/sender/events";
 import { randomDelay, sleep, type SenderDriver, type SendTarget } from "@/lib/sender/types";
-import { BaileysDriver, baileysManager } from "@/lib/sender/baileys";
 import { getLatest } from "@/lib/sender/events";
 
 const running = new Map<string, { stop: () => void }>();
+
+let _driver: SenderDriver | null = null;
+
+function getDriver(): SenderDriver {
+  if (!_driver) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { BaileysDriver } = require("@/lib/sender/baileys");
+    _driver = new BaileysDriver();
+  }
+  return _driver;
+}
 
 export function getRunningCampaignIds(): string[] {
   return [...running.keys()];
@@ -14,10 +24,6 @@ export function getRunningCampaignIds(): string[] {
 
 export function isCampaignRunning(campaignId: string): boolean {
   return running.has(campaignId);
-}
-
-export function getDriver(): SenderDriver {
-  return new BaileysDriver();
 }
 
 interface RecipientRow {
@@ -272,6 +278,8 @@ export function retryFailed(campaignId: string): number {
 /** Used only by a worker/init path so crash-recovery is safe. */
 export function initSender() {
   markStaleCampaigns();
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { baileysManager } = require("@/lib/sender/baileys");
   if (baileysManager.hasPersistedSession()) {
     baileysManager.restoreFromDb();
     console.info("[wa-sender] Restored WhatsApp session from database");
