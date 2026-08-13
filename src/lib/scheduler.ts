@@ -1,6 +1,5 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { startCampaign } from "@/lib/sender";
 
 const CHECK_INTERVAL_MS = Number(process.env.SCHEDULER_INTERVAL_MS ?? 15_000);
 
@@ -16,8 +15,10 @@ export function findDueCampaigns(): { id: string; name: string; scheduled_for: s
     .all(new Date().toISOString()) as { id: string; name: string; scheduled_for: string }[];
 }
 
-export function startScheduler(): void {
+export async function startScheduler(): Promise<void> {
   if (timer) return;
+
+  const { startCampaign } = await import("@/lib/sender");
 
   timer = setInterval(() => {
     for (const campaign of findDueCampaigns()) {
