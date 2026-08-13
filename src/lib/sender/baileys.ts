@@ -172,7 +172,7 @@ class BaileysManager extends EventEmitter {
         emitOwnEvents: true,
         fireInitQueries: true,
         transactionOpts: { maxCommitRetries: 3, delayBetweenTriesMs: 3000 },
-        patchMessageBeforeSend: (message) => {
+        patchMessageBeforeSending: (message: any) => {
           // Ensure messages are properly formatted
           return message;
         },
