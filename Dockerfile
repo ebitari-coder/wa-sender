@@ -1,4 +1,4 @@
-FROM node:18-slim AS base
+FROM node:20-slim AS base
 
 # Install build tools for native modules (better-sqlite3)
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -22,7 +22,7 @@ COPY . .
 RUN npm run build
 
 # ---------- production ----------
-FROM node:18-slim AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

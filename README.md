@@ -36,7 +36,7 @@ Bulk WhatsApp messaging tool built for **Power City Oke Ira Campus**. Create cam
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - npm
 
 ### Install
