@@ -8,6 +8,12 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
+function hasCronAuth(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  return req.headers.get("x-cron-secret") === secret;
+}
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -29,6 +35,10 @@ export function proxy(req: NextRequest) {
   const sessionToken = req.cookies.get(SESSION_COOKIE)?.value;
 
   if (!sessionToken) {
+    // Cron auth bypass for API routes
+    if (pathname.startsWith("/api/") && hasCronAuth(req)) {
+      return NextResponse.next();
+    }
     // API routes → 401
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

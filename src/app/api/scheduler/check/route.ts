@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 async function handleCheck() {
   if (process.env.ENABLE_CRON_SCHEDULER !== "true") {
     return NextResponse.json({ ok: true, skipped: true, reason: "disabled" });
@@ -18,16 +20,35 @@ async function handleCheck() {
     return NextResponse.json({ ok: true, started: 0 });
   }
 
-  const { startCampaign } = await import("@/lib/sender");
-  const results: { id: string; name: string; ok: boolean; reason?: string }[] = [];
+  const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : process.env.NEXT_PUBLIC_APP_URL
+      ? process.env.NEXT_PUBLIC_APP_URL
+      : "http://localhost:8080";
+
+  const results: { id: string; name: string; ok: boolean; error?: string }[] = [];
 
   for (const campaign of due) {
-    const res = await startCampaign(campaign.id);
-    results.push({ id: campaign.id, name: campaign.name, ok: res.ok, reason: res.reason });
-    if (res.ok) {
-      console.info(`[cron-scheduler] Started "${campaign.name}" (${campaign.id})`);
-    } else {
-      console.warn(`[cron-scheduler] Failed "${campaign.name}": ${res.reason}`);
+    try {
+      const res = await fetch(`${baseUrl}/api/campaigns/${campaign.id}/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(process.env.CRON_SECRET ? { "x-cron-secret": process.env.CRON_SECRET } : {}),
+        },
+      });
+      const ok = res.ok;
+      const body = ok ? {} : await res.json().catch(() => ({}));
+      results.push({ id: campaign.id, name: campaign.name, ok, error: body.error });
+      if (ok) {
+        console.info(`[cron-scheduler] Started "${campaign.name}" (${campaign.id})`);
+      } else {
+        console.warn(`[cron-scheduler] Failed "${campaign.name}": ${body.error}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      results.push({ id: campaign.id, name: campaign.name, ok: false, error: msg });
+      console.warn(`[cron-scheduler] Error "${campaign.name}": ${msg}`);
     }
   }
 
@@ -41,5 +62,3 @@ export async function GET() {
 export async function POST() {
   return handleCheck();
 }
-
-export const dynamic = "force-dynamic";
