@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   // whatsapp-web.js pulls native/optional deps (puppeteer, unzipper) that must
   // stay external and be required at runtime instead of bundled by Next.
   // Baileys dynamically imports jimp/sharp — keep it external to avoid

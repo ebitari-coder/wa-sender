@@ -34,14 +34,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy production node_modules
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json ./
+# Copy standalone output (self-contained, includes its own node_modules)
+COPY --from=builder /app/.next/standalone ./
 
-# Copy built Next.js app
-COPY --from=builder /app/.next ./.next
+# Copy static assets into the standalone server's public dir
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.ts ./
 
 # Create data directory for SQLite, uploads, WA sessions
 RUN mkdir -p /data
@@ -50,4 +48,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["npm", "start"]
+# Run the standalone server directly
+CMD ["node", "server.js"]
