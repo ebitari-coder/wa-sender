@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(req: Request) {
+async function handleCheck() {
   if (process.env.ENABLE_CRON_SCHEDULER !== "true") {
     return NextResponse.json({ ok: true, skipped: true, reason: "disabled" });
-  }
-
-  const auth = req.headers.get("authorization");
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const due = db
@@ -37,6 +32,14 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({ ok: true, started: results.filter((r) => r.ok).length, results });
+}
+
+export async function GET() {
+  return handleCheck();
+}
+
+export async function POST() {
+  return handleCheck();
 }
 
 export const dynamic = "force-dynamic";
