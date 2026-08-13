@@ -12,10 +12,10 @@ let _driver: SenderDriver | null = null;
 function getDriver(): SenderDriver {
   if (!_driver) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { BaileysDriver } = require("@/lib/sender/baileys");
-    _driver = new BaileysDriver();
+    const mod = require("@/lib/sender/baileys") as { BaileysDriver: new () => SenderDriver };
+    _driver = new mod.BaileysDriver();
   }
-  return _driver;
+  return _driver!;
 }
 
 export function getRunningCampaignIds(): string[] {
