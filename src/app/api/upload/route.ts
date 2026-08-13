@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     const safeName = file.name.replace(/[^\w.\- ]+/g, "").slice(0, 100) || "file";
     const ext = path.extname(safeName).slice(0, 10).toLowerCase();
     const filename = `${id}${ext}`;
-    const fullPath = path.join(UPLOAD_DIR, filename);
+    const fullPath = path.join(/* turbopackIgnore: true */ UPLOAD_DIR, filename);
 
     const buf = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(fullPath, buf);

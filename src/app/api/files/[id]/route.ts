@@ -18,10 +18,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   if (!att) return new Response("Not found", { status: 404 });
 
   const ext = path.extname(att.name);
-  const fullPath = path.join(UPLOAD_DIR, `${id}${ext.toLowerCase()}`);
-  if (!fs.existsSync(fullPath)) return new Response("Not found", { status: 404 });
+  const fullPath = path.join(/* turbopackIgnore: true */ UPLOAD_DIR, `${id}${ext.toLowerCase()}`);
+  if (!fs.existsSync(/* turbopackIgnore: true */ fullPath)) return new Response("Not found", { status: 404 });
 
-  const buf = fs.readFileSync(fullPath);
+  const buf = fs.readFileSync(/* turbopackIgnore: true */ fullPath);
   return new NextResponse(new Uint8Array(buf), {
     headers: {
       "Content-Type": att.mime ?? "application/octet-stream",
