@@ -1,5 +1,4 @@
 import "server-only";
-import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
 import { hashToken, minutesFromNow, newId, nowIso } from "@/lib/ids";
 
@@ -13,65 +12,40 @@ export interface OtpDispatch {
   otp?: string;
 }
 
-function transporter() {
-  const host = process.env.SMTP_HOST;
-  if (!host) return null;
-  return nodemailer.createTransport({
-    host,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "1",
-    auth:
-      process.env.SMTP_USER && process.env.SMTP_PASS
-        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-        : undefined,
-    tls: { rejectUnauthorized: false },
-  });
-}
-
-async function sendViaResend(to: string, otp: string): Promise<boolean> {
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM ?? "Power City WA Sender <onboarding@resend.dev>";
-  if (!key) return false;
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from,
-      to,
-      subject: "Your WA Sender access code",
-      text: `Your WA Sender login code is: ${otp}\n\nIt expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, ignore this email.`,
-      html: `<div style="font-family:Arial;padding:24px"><h2 style="color:#6b5b4f">WA Sender — Power City Oke Ira Campus</h2><p>Your access code is:</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#128C7E">${otp}</p><p>It expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, ignore this email.</p></div>`,
-    }),
-  });
-  return res.ok;
+async function sendViaMailtrap(to: string, subject: string, text: string, html: string): Promise<boolean> {
+  const token = process.env.MAILTRAP_API_TOKEN;
+  const fromEmail = process.env.MAILTRAP_FROM_EMAIL ?? "hello@pciokeiracampus.name.ng";
+  const fromName = process.env.MAILTRAP_FROM_NAME ?? "WA Sender";
+  if (!token) return false;
+  try {
+    const res = await fetch("https://send.api.mailtrap.io/api/send", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: { email: fromEmail, name: fromName },
+        to: [{ email: to }],
+        subject,
+        text,
+        html,
+        category: "WA Sender OTP",
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      console.error("[email] Mailtrap API error:", res.status, body);
+    }
+    return res.ok;
+  } catch (err) {
+    console.error("[email] Mailtrap API failed:", err instanceof Error ? err.message : err);
+    return false;
+  }
 }
 
 export async function sendHtmlEmail(to: string, subject: string, html: string): Promise<boolean> {
-  const smtp = transporter();
-  if (smtp && process.env.SMTP_FROM) {
-    try {
-      await smtp.sendMail({ from: process.env.SMTP_FROM, to, subject, html });
-      return true;
-    } catch (err) {
-      console.error("[email] SMTP failed", err);
-    }
-  }
-
-  const key = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM ?? "Power City WA Sender <onboarding@resend.dev>";
-  if (key) {
-    try {
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to, subject, html }),
-      });
-      return res.ok;
-    } catch (err) {
-      console.error("[email] Resend failed", err);
-    }
-  }
-  return false;
+  return sendViaMailtrap(to, subject, "", html);
 }
 
 export async function sendOtp(email: string): Promise<OtpDispatch> {
@@ -93,28 +67,11 @@ export async function sendOtp(email: string): Promise<OtpDispatch> {
     ).run(newId("otp"), userId, hashed, minutesFromNow(OTP_TTL_MINUTES), nowIso());
   })();
 
-  const smtp = transporter();
-  let delivered = false;
+  const subject = "Your WA Sender access code";
+  const text = `Your WA Sender login code is: ${otp}. It expires in ${OTP_TTL_MINUTES} minutes.`;
+  const html = `<div style="font-family:Arial,sans-serif;padding:24px"><h2 style="color:#128C7E">WA Sender — Power City Oke Ira Campus</h2><p>Your access code is:</p><p style="font-size:32px;letter-spacing:8px;font-weight:bold;color:#128C7E">${otp}</p><p>It expires in ${OTP_TTL_MINUTES} minutes. If you did not request this, ignore this email.</p></div>`;
 
-  if (smtp && process.env.SMTP_FROM) {
-    try {
-      await smtp.sendMail({
-        from: process.env.SMTP_FROM,
-        to: email,
-        subject: "Your WA Sender access code",
-        text: `Your WA Sender login code is: ${otp}. It expires in ${OTP_TTL_MINUTES} minutes.`,
-        html: `<p>Your <b>WA Sender</b> access code is:</p><p style="font-size:28px;letter-spacing:6px;font-weight:bold">${otp}</p><p>Expires in ${OTP_TTL_MINUTES} minutes.</p>`,
-      });
-      delivered = true;
-    } catch {
-      /* fall through to Resend */
-    }
-  }
-
-  if (!delivered) {
-    const resendOk = await sendViaResend(email, otp).catch(() => false);
-    delivered = resendOk;
-  }
+  const delivered = await sendViaMailtrap(email, subject, text, html);
 
   console.info(`[auth] OTP for ${email}${delivered ? " emailed" : " (email not configured, dev display)"}`);
   if (!delivered) {
