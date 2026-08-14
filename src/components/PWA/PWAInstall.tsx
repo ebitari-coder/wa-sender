@@ -1,162 +1,136 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Icon from "@/components/ui/Icon";
 
-const SNOOZE_KEY = "wa-pwa-install-dismissed";
-const SNOOZE_DAYS = 7;
-
-function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
-function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
-}
-
-function isDismissed(): boolean {
-  try {
-    const raw = localStorage.getItem(SNOOZE_KEY);
-    if (!raw) return false;
-    const dismissedAt = Number(raw);
-    const elapsed = Date.now() - dismissedAt;
-    return elapsed < SNOOZE_DAYS * 24 * 60 * 60 * 1000;
-  } catch {
-    return false;
-  }
-}
-
-function snooze() {
-  try {
-    localStorage.setItem(SNOOZE_KEY, String(Date.now()));
-  } catch { /* noop */ }
-}
-
-function dismissPermanently() {
-  try {
-    localStorage.setItem(SNOOZE_KEY, String(Date.now() + 365 * 24 * 60 * 60 * 1000));
-  } catch { /* noop */ }
+interface BeforeInstallPromptEvent extends Event {
+  prompt(): Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 export default function PWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [isApple, setIsApple] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("pwa-prompt-dismissed")) {
+      setDismissed(true);
+      return;
+    }
+
+    setIsIOS(/iPhone|iPad|iPod/.test(navigator.userAgent));
+
+    if (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone) {
+      setIsInstalled(true);
+      return;
+    }
+
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    };
+
+    const handleInstalled = () => {
+      setIsInstalled(true);
+      setShowPrompt(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+    window.addEventListener("appinstalled", handleInstalled);
+
+    const timer = setTimeout(() => setShowPrompt(true), 3000);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+      window.removeEventListener("appinstalled", handleInstalled);
+      clearTimeout(timer);
+    };
+  }, []);
 
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     if (outcome === "accepted") {
-      setInstalled(true);
-      setShowModal(false);
-      dismissPermanently();
+      setIsInstalled(true);
+      setShowPrompt(false);
     }
     setDeferredPrompt(null);
   }, [deferredPrompt]);
 
   const handleDismiss = useCallback(() => {
-    setShowModal(false);
-    snooze();
+    setShowPrompt(false);
+    setDismissed(true);
+    sessionStorage.setItem("pwa-prompt-dismissed", "true");
   }, []);
 
-  useEffect(() => {
-    if (isStandalone()) {
-      setInstalled(true);
-      return;
-    }
-    if (isDismissed()) return;
-
-    setIsApple(isIOS());
-
-    // Listen for beforeinstallprompt (Android/Chrome)
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-
-    // Show the modal after 3 seconds regardless of browser event
-    // On Android: if beforeinstallprompt fires, Install button triggers native prompt
-    // On Android (no event): shows manual instructions
-    // On iOS: shows Share → Add to Home Screen instructions
-    const timer = setTimeout(() => setShowModal(true), 3000);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-      clearTimeout(timer);
-    };
-  }, []);
-
-  if (installed) return null;
+  if (isInstalled || !showPrompt || dismissed) return null;
 
   return (
-    <Modal open={showModal} onClose={handleDismiss} title="Install PCI Messenger" size="sm">
-      <div className="px-5 pb-5">
-        <div className="flex flex-col items-center gap-4 py-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10">
-            <Icon name="download" className="h-8 w-8 text-accent" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium text-stone-900">
-              Add PCI Messenger to your home screen
-            </p>
-            <p className="mt-1 text-xs text-stone-500">
-              {isApple
-                ? "Tap the Share button, then \"Add to Home Screen\" for quick access."
-                : "Install the app for faster access, offline support, and a native experience."}
-            </p>
-          </div>
-
-          {isApple ? (
-            <div className="flex w-full flex-col gap-2">
-              <div className="flex items-center gap-3 rounded-xl bg-stone-50 px-4 py-3 text-xs text-stone-600">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-stone-200">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                </span>
-                <span>Tap <strong>Share</strong> in Safari, then <strong>Add to Home Screen</strong></span>
-              </div>
-              <Button variant="outline" fullWidth onClick={handleDismiss}>
-                Got it
-              </Button>
+    <div className="fixed bottom-4 left-4 right-4 z-50 md:left-auto md:right-4 md:max-w-sm">
+      <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-2xl backdrop-blur-sm">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent shadow-lg">
+              <Icon name="whatsapp" className="h-6 w-6 text-white" />
             </div>
-          ) : (
-            <div className="flex w-full flex-col gap-2">
-              {deferredPrompt ? (
-                <>
-                  <Button variant="primary" fullWidth onClick={handleInstall}>
-                    <Icon name="download" className="h-4 w-4" />
-                    Install Now
-                  </Button>
-                  <Button variant="outline" fullWidth onClick={handleDismiss}>
-                    Later
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-start gap-3 rounded-xl bg-stone-50 px-4 py-3 text-xs text-stone-600">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-stone-200">
-                      <Icon name="download" className="h-4 w-4" />
-                    </span>
-                    <div className="space-y-1">
-                      <p><strong>Chrome:</strong> Tap the ⋮ menu → <strong>Install app</strong></p>
-                      <p><strong>Samsung Internet:</strong> Tap ≡ → <strong>Add page to</strong> → <strong>Home screen</strong></p>
-                      <p><strong>Firefox:</strong> Tap ⋮ → <strong>Install</strong></p>
-                    </div>
-                  </div>
-                  <Button variant="outline" fullWidth onClick={handleDismiss}>
-                    Got it
-                  </Button>
-                </>
-              )}
+            <div>
+              <p className="text-sm font-bold text-stone-900">Install PCI Messenger</p>
+              <p className="text-xs text-stone-500">Get the native app experience</p>
             </div>
-          )}
+          </div>
+          <button
+            onClick={handleDismiss}
+            className="flex h-6 w-6 items-center justify-center rounded-full text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
+
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center gap-2 text-xs text-stone-600">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+            <span>Fast & works offline</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-stone-600">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+            <span>Home screen shortcut</span>
+          </div>
+        </div>
+
+        {isIOS ? (
+          <div className="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3">
+            <p className="text-xs text-amber-800 font-medium mb-1.5">How to install:</p>
+            <ol className="text-xs text-amber-700 space-y-1">
+              <li className="flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                <span>Tap <strong>Share</strong> in Safari</span>
+              </li>
+              <li className="flex items-center gap-1.5">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                <span>Select <strong>Add to Home Screen</strong></span>
+              </li>
+            </ol>
+          </div>
+        ) : (
+          <div className="mt-3 flex gap-2">
+            <Button variant="primary" size="sm" className="flex-1" onClick={handleInstall}>
+              <Icon name="download" className="h-3.5 w-3.5" />
+              Install
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDismiss}>
+              Later
+            </Button>
+          </div>
+        )}
       </div>
-    </Modal>
+    </div>
   );
 }

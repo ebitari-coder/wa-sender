@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ServiceWorker from "@/components/PWA/ServiceWorker";
 import PWAInstall from "@/components/PWA/PWAInstall";
 
 const geistSans = Geist({
@@ -18,7 +17,7 @@ export const metadata: Metadata = {
   title: "PCI Messenger — Power City Oke Ira Campus",
   description:
     "Bulk WhatsApp messaging for Power City Oke Ira Campus. Create campaigns, import contacts, and send messages to your community.",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.webmanifest?v=5",
   applicationName: "PCI Messenger",
   appleWebApp: {
     capable: true,
@@ -101,8 +100,38 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full flex flex-col">
         {children}
-        <ServiceWorker />
         <PWAInstall />
+
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('[PWA] SW registered:', registration.scope);
+                      registration.addEventListener('updatefound', function() {
+                        var newWorker = registration.installing;
+                        if (newWorker) {
+                          newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              console.log('[PWA] New content available');
+                            }
+                          });
+                        }
+                      });
+                    })
+                    .catch(function(error) {
+                      console.error('[PWA] SW registration failed:', error);
+                    });
+                });
+                navigator.serviceWorker.addEventListener('controllerchange', function() {
+                  console.log('[PWA] New SW took control');
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
