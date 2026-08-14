@@ -70,28 +70,25 @@ export default function PWAInstall() {
     }
     if (isDismissed()) return;
 
-    if (isIOS()) {
-      setIsApple(true);
-      const timer = setTimeout(() => setShowModal(true), 5000);
-      return () => clearTimeout(timer);
-    }
+    setIsApple(isIOS());
 
+    // Listen for beforeinstallprompt (Android/Chrome)
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setTimeout(() => setShowModal(true), 5000);
-    };
-    const onInstalled = () => {
-      setInstalled(true);
-      setShowModal(false);
-      dismissPermanently();
     };
 
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    window.addEventListener("appinstalled", onInstalled);
+
+    // Show the modal after 3 seconds regardless of browser event
+    // On Android: if beforeinstallprompt fires, Install button triggers native prompt
+    // On Android (no event): shows manual instructions
+    // On iOS: shows Share → Add to Home Screen instructions
+    const timer = setTimeout(() => setShowModal(true), 3000);
+
     return () => {
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-      window.removeEventListener("appinstalled", onInstalled);
+      clearTimeout(timer);
     };
   }, []);
 
@@ -128,13 +125,34 @@ export default function PWAInstall() {
               </Button>
             </div>
           ) : (
-            <div className="flex w-full gap-2">
-              <Button variant="outline" fullWidth onClick={handleDismiss}>
-                Later
-              </Button>
-              <Button variant="primary" fullWidth onClick={handleInstall}>
-                Install
-              </Button>
+            <div className="flex w-full flex-col gap-2">
+              {deferredPrompt ? (
+                <>
+                  <Button variant="primary" fullWidth onClick={handleInstall}>
+                    <Icon name="download" className="h-4 w-4" />
+                    Install Now
+                  </Button>
+                  <Button variant="outline" fullWidth onClick={handleDismiss}>
+                    Later
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-start gap-3 rounded-xl bg-stone-50 px-4 py-3 text-xs text-stone-600">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-stone-200">
+                      <Icon name="download" className="h-4 w-4" />
+                    </span>
+                    <div className="space-y-1">
+                      <p><strong>Chrome:</strong> Tap the ⋮ menu → <strong>Install app</strong></p>
+                      <p><strong>Samsung Internet:</strong> Tap ≡ → <strong>Add page to</strong> → <strong>Home screen</strong></p>
+                      <p><strong>Firefox:</strong> Tap ⋮ → <strong>Install</strong></p>
+                    </div>
+                  </div>
+                  <Button variant="outline" fullWidth onClick={handleDismiss}>
+                    Got it
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </div>
