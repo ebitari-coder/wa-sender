@@ -374,7 +374,7 @@ class BaileysManager extends EventEmitter {
 
 export const baileysManager = new BaileysManager();
 
-export class BaileysDriver implements SenderDriver {
+class BaileysDriverImpl implements SenderDriver {
   isAvailable(): boolean {
     return true;
   }
@@ -395,3 +395,5 @@ export class BaileysDriver implements SenderDriver {
     return baileysManager.disconnect();
   }
 }
+
+export const baileysDriver: SenderDriver = new BaileysDriverImpl();

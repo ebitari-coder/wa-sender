@@ -12,8 +12,8 @@ let _driver: SenderDriver | null = null;
 function getDriver(): SenderDriver {
   if (!_driver) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("@/lib/sender/baileys") as { BaileysDriver: new () => SenderDriver };
-    _driver = new mod.BaileysDriver();
+    const mod = require("@/lib/sender/baileys") as { baileysDriver: SenderDriver };
+    _driver = mod.baileysDriver;
   }
   return _driver!;
 }
