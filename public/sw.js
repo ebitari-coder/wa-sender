@@ -1,37 +1,42 @@
 /* WA Sender service worker — offline-capable PWA shell. */
-const VERSION = "wa-sender-v2";
-const CORE_ASSETS = [
+const VERSION = "wa-sender-v3";
+
+const CRITICAL_ASSETS = [
   "/",
-  "/dashboard",
   "/login",
+  "/dashboard",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/icon-192-maskable.png",
   "/icons/icon-512-maskable.png",
-  "/icons/splash-logo.png",
-  "/icons/apple-touch-icon.png",
-  "/icons/mstile-150x150.png",
   "/manifest.webmanifest",
-  "/browserconfig.xml",
-  "/splash/apple-touch-startup-image-640x1136.png",
-  "/splash/apple-touch-startup-image-750x1334.png",
-  "/splash/apple-touch-startup-image-828x1792.png",
-  "/splash/apple-touch-startup-image-1125x2436.png",
-  "/splash/apple-touch-startup-image-1170x2532.png",
-  "/splash/apple-touch-startup-image-1242x2688.png",
-  "/splash/apple-touch-startup-image-1284x2778.png",
-  "/splash/apple-touch-startup-image-1290x2796.png",
-  "/splash/apple-touch-startup-image-1620x2160.png",
-  "/splash/apple-touch-startup-image-1668x2388.png",
-  "/splash/apple-touch-startup-image-2048x2732.png",
+];
+
+const OPTIONAL_ASSETS = [
+  "/icons/icon-64.png",
+  "/icons/apple-touch-icon.png",
+  "/icons/splash-logo.png",
+  "/icons/mstile-150x150.png",
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches
-      .open(VERSION)
-      .then((cache) => cache.addAll(CORE_ASSETS))
-      .then(() => self.skipWaiting()),
+    (async () => {
+      const cache = await caches.open(VERSION);
+      // Cache critical assets — fail individually, don't block install
+      await Promise.allSettled(
+        CRITICAL_ASSETS.map((url) =>
+          fetch(url).then((res) => (res.ok ? cache.put(url, res) : null)).catch(() => null)
+        )
+      );
+      // Cache optional assets in background
+      Promise.allSettled(
+        OPTIONAL_ASSETS.map((url) =>
+          fetch(url).then((res) => (res.ok ? cache.put(url, res) : null)).catch(() => null)
+        )
+      );
+      await self.skipWaiting();
+    })()
   );
 });
 
@@ -53,7 +58,7 @@ self.addEventListener("fetch", (event) => {
 
   // Never cache API routes.
   if (url.pathname.startsWith("/api")) {
-    event.respondWith(fetch(request).then((res) => res).catch(() => new Response("", { status: 503 })));
+    event.respondWith(fetch(request).catch(() => new Response("", { status: 503 })));
     return;
   }
 
@@ -63,7 +68,7 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((res) => {
           const copy = res.clone();
-          caches.open(VERSION).then((cache) => cache.put("/", copy));
+          caches.open(VERSION).then((cache) => cache.put(request, copy));
           return res;
         })
         .catch(() =>

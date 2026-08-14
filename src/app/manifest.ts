@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       "Bulk WhatsApp messaging for Power City Oke Ira Campus — create campaigns, import contacts, and send to your community.",
     id: "/",
-    start_url: "/dashboard",
+    start_url: "/login",
     scope: "/",
     display: "standalone",
     display_override: ["window-controls-overlay", "standalone", "minimal-ui"],
