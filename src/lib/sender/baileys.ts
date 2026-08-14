@@ -374,6 +374,10 @@ class BaileysManager extends EventEmitter {
 
 export const baileysManager = new BaileysManager();
 
+// Store on globalThis so require() in the standalone bundle can find it
+const g = globalThis as unknown as { __baileysManager?: typeof baileysManager };
+g.__baileysManager = baileysManager;
+
 class BaileysDriverImpl implements SenderDriver {
   isAvailable(): boolean {
     return true;

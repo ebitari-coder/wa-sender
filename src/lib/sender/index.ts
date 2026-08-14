@@ -11,9 +11,12 @@ let _manager: any = null;
 
 function getManager(): any {
   if (!_manager) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("@/lib/sender/baileys");
-    _manager = mod.baileysManager;
+    _manager = (globalThis as any).__baileysManager;
+    if (!_manager) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require("@/lib/sender/baileys");
+      _manager = (globalThis as any).__baileysManager;
+    }
   }
   return _manager;
 }
@@ -278,10 +281,9 @@ export function retryFailed(campaignId: string): number {
 /** Used only by a worker/init path so crash-recovery is safe. */
 export function initSender() {
   markStaleCampaigns();
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { baileysManager } = require("@/lib/sender/baileys");
-  if (baileysManager.hasPersistedSession()) {
-    baileysManager.restoreFromDb();
+  const mgr = getManager();
+  if (mgr.hasPersistedSession()) {
+    mgr.restoreFromDb();
     console.info("[wa-sender] Restored WhatsApp session from database");
   }
 }
