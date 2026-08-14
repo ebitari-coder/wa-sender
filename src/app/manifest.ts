@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "WA Sender — Power City Oke Ira Campus",
-    short_name: "WA Sender",
+    name: "PCI Messenger — Power City Oke Ira Campus",
+    short_name: "PCI Messenger",
     description:
       "Bulk WhatsApp messaging for Power City Oke Ira Campus — create campaigns, import contacts, and send to your community.",
     id: "/",

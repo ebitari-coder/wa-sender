@@ -15,15 +15,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WA Sender — Power City Oke Ira Campus",
+  title: "PCI Messenger — Power City Oke Ira Campus",
   description:
     "Bulk WhatsApp messaging for Power City Oke Ira Campus. Create campaigns, import contacts, and send messages to your community.",
   manifest: "/manifest.webmanifest",
-  applicationName: "WA Sender",
+  applicationName: "PCI Messenger",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "WA Sender",
+    title: "PCI Messenger",
     startupImage: [
       {
         url: "/splash/apple-touch-startup-image-640x1136.png",

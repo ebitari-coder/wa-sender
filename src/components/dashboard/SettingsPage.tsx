@@ -275,7 +275,7 @@ export default function SettingsPage({
             />
             <CardBody className="space-y-2 text-xs text-stone-500">
               <p>
-                <b className="text-stone-700">WA Sender</b> is the official bulk messaging tool for
+                <b className="text-stone-700">PCI Messenger</b> is the official bulk messaging tool for
                 <b className="text-stone-700"> Power City Oke Ira Campus</b>.
               </p>
               <p>Data is stored locally in an SQLite database on this server.</p>

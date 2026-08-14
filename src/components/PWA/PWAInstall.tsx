@@ -98,7 +98,7 @@ export default function PWAInstall() {
   if (installed) return null;
 
   return (
-    <Modal open={showModal} onClose={handleDismiss} title="Install WA Sender" size="sm">
+    <Modal open={showModal} onClose={handleDismiss} title="Install PCI Messenger" size="sm">
       <div className="px-5 pb-5">
         <div className="flex flex-col items-center gap-4 py-4">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10">
@@ -106,7 +106,7 @@ export default function PWAInstall() {
           </div>
           <div className="text-center">
             <p className="text-sm font-medium text-stone-900">
-              Add WA Sender to your home screen
+              Add PCI Messenger to your home screen
             </p>
             <p className="mt-1 text-xs text-stone-500">
               {isApple

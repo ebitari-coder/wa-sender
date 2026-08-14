@@ -101,7 +101,7 @@ export default function LoginPage() {
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent shadow-lg shadow-accent/30">
             <Icon name="whatsapp" className="h-9 w-9 text-white" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-brand-deep">WA Sender</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-brand-deep">PCI Messenger</h1>
           <p className="mt-1 text-sm text-stone-500">
             Power City Oke Ira Campus · Bulk messaging tool
           </p>

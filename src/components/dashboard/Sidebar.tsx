@@ -41,7 +41,7 @@ export function Sidebar({ userEmail }: { userEmail: string }) {
             <Icon name="whatsapp" className="h-5 w-5 text-white" />
           </span>
           <span>
-            <span className="block text-sm font-bold leading-tight text-brand-deep">WA Sender</span>
+            <span className="block text-sm font-bold leading-tight text-brand-deep">PCI Messenger</span>
             <span className="block text-[11px] text-stone-400">Power City Oke Ira</span>
           </span>
         </Link>
