@@ -1,43 +1,9 @@
-/* WA Sender service worker — offline-capable PWA shell. */
-const VERSION = "wa-sender-v3";
-
-const CRITICAL_ASSETS = [
-  "/",
-  "/login",
-  "/dashboard",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/icon-192-maskable.png",
-  "/icons/icon-512-maskable.png",
-  "/manifest.webmanifest",
-];
-
-const OPTIONAL_ASSETS = [
-  "/icons/icon-64.png",
-  "/icons/apple-touch-icon.png",
-  "/icons/splash-logo.png",
-  "/icons/mstile-150x150.png",
-];
+/* PCI Messenger service worker — offline-capable PWA shell. */
+const VERSION = "pci-messenger-v1";
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    (async () => {
-      const cache = await caches.open(VERSION);
-      // Cache critical assets — fail individually, don't block install
-      await Promise.allSettled(
-        CRITICAL_ASSETS.map((url) =>
-          fetch(url).then((res) => (res.ok ? cache.put(url, res) : null)).catch(() => null)
-        )
-      );
-      // Cache optional assets in background
-      Promise.allSettled(
-        OPTIONAL_ASSETS.map((url) =>
-          fetch(url).then((res) => (res.ok ? cache.put(url, res) : null)).catch(() => null)
-        )
-      );
-      await self.skipWaiting();
-    })()
-  );
+  // Skip waiting immediately — don't block on cache
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -62,7 +28,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigation: network-first with cache fallback (offline shell).
+  // Navigation: network-first, cache in background, offline fallback.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
