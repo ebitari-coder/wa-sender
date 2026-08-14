@@ -2,20 +2,20 @@ import "server-only";
 import { db } from "@/lib/db";
 import { newId, nowIso } from "@/lib/ids";
 import { publish, type ProgressSnapshot } from "@/lib/sender/events";
-import { randomDelay, sleep, type SenderDriver, type SendTarget } from "@/lib/sender/types";
+import { randomDelay, sleep, type SendTarget } from "@/lib/sender/types";
 import { getLatest } from "@/lib/sender/events";
 
 const running = new Map<string, { stop: () => void }>();
 
-let _driver: SenderDriver | null = null;
+let _manager: any = null;
 
-function getDriver(): SenderDriver {
-  if (!_driver) {
+function getManager(): any {
+  if (!_manager) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require("@/lib/sender/baileys") as { baileysDriver: SenderDriver };
-    _driver = mod.baileysDriver;
+    const mod = require("@/lib/sender/baileys");
+    _manager = mod.baileysManager;
   }
-  return _driver!;
+  return _manager;
 }
 
 export function getRunningCampaignIds(): string[] {
@@ -118,8 +118,8 @@ export async function startCampaign(campaignId: string): Promise<{ ok: boolean; 
     return { ok: false, reason: "Campaign already completed" };
   }
 
-  const driver = getDriver();
-  const connect = await driver.connect().catch(() => ({ ready: false, reason: "connect failed" }));
+  const manager = getManager();
+  const connect = await manager.connect().catch(() => ({ ready: false, reason: "connect failed" }));
 
   if (connect.ready === false) {
     // WebJS connects asynchronously (QR may be needed). Block the run until
@@ -142,7 +142,7 @@ export async function startCampaign(campaignId: string): Promise<{ ok: boolean; 
 
   publish(snapshot(campaignId, "sending"));
 
-  void runLoop(campaignId, driver, () => stopRequested).finally(() => {
+  void runLoop(campaignId, manager, () => stopRequested).finally(() => {
     running.delete(campaignId);
   });
 
@@ -151,7 +151,7 @@ export async function startCampaign(campaignId: string): Promise<{ ok: boolean; 
 
 async function runLoop(
   campaignId: string,
-  driver: SenderDriver,
+  manager: any,
   isStopped: () => boolean,
 ): Promise<void> {
   const attachments = db
@@ -192,7 +192,7 @@ async function runLoop(
     for (let attempt = 1; attempt <= 2 && !sent; attempt++) {
       if (isStopped()) break;
       try {
-        await driver.send(target);
+        await manager.send(target);
         sent = true;
       } catch (err) {
         lastError = err instanceof Error ? err.message || err.toString() : typeof err === "string" ? err : JSON.stringify(err) || String(err);
@@ -201,9 +201,9 @@ async function runLoop(
         if (attempt === 1 && isStaleSendError(lastError)) {
           console.log(`[sender] Reconnecting before retry for ${recipient.number}...`);
           try {
-            await driver.disconnect();
+            await manager.disconnect();
             await sleep(1000);
-            const reconnect = await driver.connect();
+            const reconnect = await manager.connect();
             if (reconnect.ready) {
               console.log(`[sender] Reconnected, retrying send for ${recipient.number}`);
               continue;
