@@ -26,6 +26,7 @@ export async function GET(_req: Request) {
         send({
           state: baileysManager.state,
           qr: baileysManager.qr,
+          pairingCode: baileysManager.pairingCode,
           reason: baileysManager.reason,
           readyInfo: baileysManager.readyInfo,
         });

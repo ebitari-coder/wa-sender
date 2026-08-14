@@ -37,6 +37,7 @@ class BaileysManager extends EventEmitter {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private connectAttempts = 0;
   private readonly maxConnectAttempts = 5;
+  private pendingPairingPhone: string | null = null;
 
   private authDir(): string {
     return path.join(SESSION_DIR, "baileys_auth");
@@ -125,6 +126,29 @@ class BaileysManager extends EventEmitter {
     return false;
   }
 
+  async requestPairing(phoneNumber: string): Promise<string | null> {
+    const clean = phoneNumber.replace(/\D/g, "");
+    if (clean.length < 6 || clean.length > 15) {
+      console.error("[baileys] Invalid phone number for pairing:", phoneNumber);
+      return null;
+    }
+    if (!this.sock || this.state !== "qr") {
+      console.error("[baileys] Cannot request pairing: not in QR state");
+      return null;
+    }
+    this.pendingPairingPhone = clean;
+    try {
+      const code = await this.sock.requestPairingCode(clean);
+      this.pairingCode = code;
+      console.log(`[baileys] Pairing code for ${clean}: ${code}`);
+      this.emit("state");
+      return code;
+    } catch (err) {
+      console.error("[baileys] requestPairingCode failed:", err);
+      return null;
+    }
+  }
+
   async connect(): Promise<{ ready: boolean; reason?: string }> {
     if (this.state === "ready") {
       return { ready: true };
@@ -147,6 +171,7 @@ class BaileysManager extends EventEmitter {
     this.reason = "";
     this.qr = null;
     this.pairingCode = null;
+    this.pendingPairingPhone = null;
     this.emit("state");
 
     try {
@@ -186,7 +211,8 @@ class BaileysManager extends EventEmitter {
         if (qr) {
           this.state = "qr";
           // Request pairing code for mobile users who can't scan QR
-          this.sock?.requestPairingCode?.("123456").then((code: string) => {
+          const phoneToUse = this.pendingPairingPhone ?? "123456";
+          this.sock?.requestPairingCode?.(phoneToUse).then((code: string) => {
             this.pairingCode = code;
             console.log(`[baileys] Pairing code: ${code}`);
             this.emit("state");
